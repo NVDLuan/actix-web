@@ -1,0 +1,26 @@
+[package]
+name = "untitled"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+uuid = { version = "1.7", features = ["v4"] }
+actix-web = "4"
+shuttle-actix-web = "0.52"
+shuttle-runtime = "0.52"
+tokio = "1"
+diesel = { version = "2.2", features = ["sqlite", "postgres", "mysql", "r2d2"] }
+r2d2 = "0.8"  # Ensure r2d2 is added separately
+
+serde_json = "1"
+dotenv = "0.15"
+actix-rt = "2"
+serde = { version = "1", features = ["derive"] }
+utoipa = { version = "4.2", features = ["actix_extras"] }
+utoipa-swagger-ui = { version = "5.0", features = ["actix-web"] }
+sea-orm = { version = "0.12", features = ["sqlx-postgres", "runtime-async-std-native-tls"] }
+argon2 = "0.5"
+rand_core = { version = "0.6", features = ["std"] }
+
+[dev-dependencies]
+sea-orm-migration = "0.12"
