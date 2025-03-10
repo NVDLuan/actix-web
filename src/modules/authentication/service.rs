@@ -1,10 +1,12 @@
 use crate::configs::database::DbPool;
+use crate::modules::authentication::auth::{generate_access_token, generate_refresh_token};
 use crate::modules::authentication::crud;
 use crate::modules::authentication::model::{LoginRequest, NewUser};
-use crate::modules::authentication::utils::hash_password;
-use actix_web::{HttpResponse, web};
+use crate::modules::authentication::utils::{hash_password, verify_password};
+use actix_web::cookie::Cookie;
+use actix_web::{web, HttpResponse};
 use serde_json::json;
-
+use tracing::{info, debug};
 #[utoipa::path(
     post,
     path = "/auth/register",
@@ -21,10 +23,10 @@ pub async fn register_user(pool: web::Data<DbPool>, user: web::Json<NewUser>) ->
     match crud::insert_user(
         pool.get_ref(),
         &new_user.name,
-        &new_user.username,
+        &new_user.email,
         &password,
     )
-    .await
+        .await
     {
         Ok(_) => HttpResponse::Created().json("Đăng ký thành công"),
         Err(err) => HttpResponse::InternalServerError()
@@ -34,7 +36,7 @@ pub async fn register_user(pool: web::Data<DbPool>, user: web::Json<NewUser>) ->
 
 #[utoipa::path(
     get,
-    path = "/auth/get_all_users",
+    path = "/auth/users",
     tag = "Auth",
     responses(
         (status = 200, description = "List of Users Retrieved")
@@ -55,8 +57,37 @@ pub async fn get_all_users(pool: web::Data<DbPool>) -> HttpResponse {
     )
 )]
 pub async fn login(pool: web::Data<DbPool>, req: web::Json<LoginRequest>) -> HttpResponse {
-    let username: String = req.username.clone();
-    match crud::get_user_by_email(pool.get_ref(), &username).await {
-        
+    info!("Service: call login");
+    let email: String = req.email.clone();
+    match crud::get_user_by_email(pool.get_ref(), &email).await {
+        Ok(user) => {
+            if verify_password(&req.password, &user.password) {
+                info!("set cookie");
+                let access_token = generate_access_token(&email);
+                let refresh_token = generate_refresh_token();
+
+                let access_cookie = Cookie::build("access_token", access_token.clone())
+                    .path("/")
+                    .http_only(true)
+                    .secure(true)
+                    .finish();
+
+                let refresh_cookie = Cookie::build("refresh_token", refresh_token.clone())
+                    .path("/")
+                    .http_only(true)
+                    .secure(true)
+                    .finish();
+
+                HttpResponse::Ok()
+                    .cookie(access_cookie)
+                    .cookie(refresh_cookie)
+                    .json("Login successful")
+            } else {
+                HttpResponse::Unauthorized().json("Invalid credentials")
+            }
+        }
+        Err(_) => {
+            HttpResponse::Unauthorized().json("Invalid credentials")
+        }
     }
 }

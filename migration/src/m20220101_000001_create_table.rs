@@ -6,6 +6,12 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        // Đảm bảo PostgreSQL hỗ trợ UUID
+        manager
+            .get_connection()
+            .execute_unprepared("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+            .await?;
+
         manager
             .create_table(
                 Table::create()
@@ -13,10 +19,10 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Users::Id)
-                            .integer()
+                            .uuid()
                             .not_null()
-                            .auto_increment()
-                            .primary_key(),
+                            .primary_key()
+                            .default(Expr::cust("uuid_generate_v4()")), // Sử dụng raw SQL để tạo UUID tự động
                     )
                     .col(ColumnDef::new(Users::Name).string().not_null())
                     .col(ColumnDef::new(Users::Email).string().not_null().unique_key())
@@ -28,6 +34,7 @@ impl MigrationTrait for Migration {
             )
             .await
     }
+
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager.drop_table(Table::drop().table(Users::Table).to_owned()).await

@@ -7,7 +7,7 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "users")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: i32,
+    pub id: Uuid,
     pub name: String,
     pub email: String,
     pub password: String,
@@ -21,21 +21,14 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct User {
-    pub id: String,
-    pub username: String,
-    pub password: String,
-}
-
 #[derive(Deserialize, ToSchema)]
 pub struct NewUser {
     pub name: String,
-    pub username: String,
+    pub email: String,
     pub password: String,
 }
 #[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
-    pub username: String,
+    pub email: String,
     pub password: String,
 }
